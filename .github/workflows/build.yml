@@ -33,8 +33,15 @@ jobs:
         with:
           gradle-version: 8.7
       - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
         working-directory: ${{ steps.p.outputs.dir }}
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
+      - name: Show compile errors
+        if: failure()
+        working-directory: ${{ steps.p.outputs.dir }}
+        run: |
+          grep -E "^e: " build.log | head -15 | while IFS= read -r l; do echo "::error::${l}"; done || true
       - uses: actions/upload-artifact@v4
         with:
           name: ABUOSMAN-TV-debug-apk
