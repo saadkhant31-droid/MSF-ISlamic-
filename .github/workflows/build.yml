@@ -7,17 +7,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Find Android project
+        id: p
+        run: |
+          S=$(find . -name settings.gradle.kts -not -path "*/.*" | head -1)
+          if [ -z "$S" ]; then
+            echo "ERROR: settings.gradle.kts not found. Upload the project files (app, build.gradle.kts, settings.gradle.kts ...) to the repository."
+            echo "Files in repo:"; find . -maxdepth 3 -not -path "./.git/*" | head -50
+            exit 1
+          fi
+          echo "dir=$(dirname "$S")" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v4
+      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
+        working-directory: ${{ steps.p.outputs.dir }}
       - uses: actions/upload-artifact@v4
         with:
           name: ABUOSMAN-TV-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: ${{ steps.p.outputs.dir }}/app/build/outputs/apk/debug/*.apk
