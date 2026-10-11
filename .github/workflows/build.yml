@@ -7,13 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Find Android project
+      - name: Find Android project (zip ho to khud unzip)
         id: p
         run: |
-          S=$(find . -name settings.gradle.kts -not -path "*/.*" | head -1)
+          S=$(find . -name settings.gradle.kts -not -path "./.git/*" | head -1)
           if [ -z "$S" ]; then
-            echo "ERROR: settings.gradle.kts not found. Upload the project files (app, build.gradle.kts, settings.gradle.kts ...) to the repository."
-            echo "Files in repo:"; find . -maxdepth 3 -not -path "./.git/*" | head -50
+            for z in $(find . -name "*.zip" -not -path "./.git/*"); do
+              echo "Unzipping $z"
+              unzip -oq "$z" -d _unzipped
+            done
+            S=$(find . -name settings.gradle.kts -not -path "./.git/*" | head -1)
+          fi
+          if [ -z "$S" ]; then
+            echo "ERROR: project not found. Files in repo:"
+            find . -maxdepth 3 -not -path "./.git/*" | head -50
             exit 1
           fi
           echo "dir=$(dirname "$S")" >> "$GITHUB_OUTPUT"
