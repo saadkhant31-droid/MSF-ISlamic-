@@ -12,46 +12,87 @@ permissions:
 
 jobs:
   build:
-    name: Build MSF TV APK
+    name: Build ABUOSMAN TV APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set Up JDK 17
+      - name: Set Up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Extract Android Project ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP_FILE="ABUOSMAN_TV_Android_Project.zip"
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: Project ZIP file not found!"
+            exit 1
+          fi
+
+          mkdir -p extracted_project
+          unzip -o "$ZIP_FILE" -d extracted_project
+
+          echo "ZIP extracted successfully."
+          echo "Extracted files:"
+          find extracted_project -maxdepth 4 -type f | head -100
+
+      - name: Locate Gradle Project
+        shell: bash
+        run: |
+          set -e
+
+          PROJECT_DIR=""
+
+          while IFS= read -r -d '' file; do
+            dir="$(dirname "$file")"
+
+            if [ -f "$dir/app/build.gradle" ] ||
+               [ -f "$dir/app/build.gradle.kts" ]; then
+              PROJECT_DIR="$dir"
+              break
+            fi
+          done < <(
+            find extracted_project \
+              -type f \
+              \( -name settings.gradle -o -name settings.gradle.kts \) \
+              -print0
+          )
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Android Gradle project not found."
+            echo "ZIP must contain settings.gradle or settings.gradle.kts"
+            echo "and an app/build.gradle or app/build.gradle.kts file."
+            exit 1
+          fi
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Android project found at: $PROJECT_DIR"
+          ls -la "$PROJECT_DIR"
 
       - name: Set Up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Check Project Files
+      - name: Build Debug APK
+        shell: bash
         run: |
-          echo "Checking project structure..."
-          ls -la
-          find . -maxdepth 3 \
-            -name "settings.gradle" \
-            -o -name "settings.gradle.kts" \
-            -o -name "build.gradle" \
-            -o -name "build.gradle.kts" \
-            -print
+          set -e
+          cd "$PROJECT_DIR"
 
-      - name: Build Android APK
-        run: |
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
             ./gradlew assembleDebug --stacktrace
-          elif [ -f "./settings.gradle" ] || [ -f "./settings.gradle.kts" ]; then
-            gradle assembleDebug --stacktrace
           else
-            echo "ERROR: Android Gradle project not found in repository root."
-            echo "Check the project folder and build.yml working directory."
-            exit 1
+            gradle assembleDebug --stacktrace
           fi
 
       - name: Upload APK
@@ -60,6 +101,6 @@ jobs:
         with:
           name: ABUOSMAN-TV-APK
           path: |
-            **/build/outputs/apk/debug/*.apk
+            extracted_project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
