@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build ABUOSMAN TV APK
+    name: Build ABUOSMANTV APK
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +30,7 @@ jobs:
         run: |
           set -e
 
-          ZIP_FILE="ABUOSMAN_TV_Android_Project.zip"
+          ZIP_FILE="ABUOSMANTV_.zip"
 
           if [ ! -f "$ZIP_FILE" ]; then
             echo "ERROR: Project ZIP file not found!"
@@ -99,7 +99,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ABUOSMAN-TV-APK
+          name: ABUOSMANTV-APK
           path: |
             extracted_project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
