@@ -20,9 +20,16 @@ jobs:
           gradle-version: 8.5
 
       - name: Build debug APK
-        run: gradle assembleDebug
+        run: |
+          FILE=$(find . -name settings.gradle -not -path './.git/*' | head -n 1)
+          if [ -z "$FILE" ]; then
+            echo "settings.gradle نہیں ملی۔ فائل ریپو میں اپ لوڈ کریں۔"
+            exit 1
+          fi
+          cd "$(dirname "$FILE")"
+          gradle assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: PDFReader-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: "**/build/outputs/apk/debug/*.apk"
