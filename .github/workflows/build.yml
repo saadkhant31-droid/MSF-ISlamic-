@@ -1,35 +1,40 @@
 name: Build APK
-
 on:
   push:
+    branches: [ main, master ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-
-      - uses: gradle/actions/setup-gradle@v3
+      - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.5
-
+          gradle-version: "8.7"
+      - name: Unzip project if a zip was uploaded
+        run: |
+          if [ -z "$(find . \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' | head -n 1)" ]; then
+            ZIP=$(find . -maxdepth 2 -name '*.zip' -not -path './.git/*' | head -n 1)
+            if [ -n "$ZIP" ]; then
+              echo "Unzipping $ZIP"
+              mkdir -p /tmp/proj && unzip -q -o "$ZIP" -d /tmp/proj
+            fi
+          fi
       - name: Build debug APK
         run: |
-          FILE=$(find . -name settings.gradle -not -path './.git/*' | head -n 1)
+          FILE=$(find . /tmp/proj \( -name settings.gradle -o -name settings.gradle.kts \) -not -path './.git/*' 2>/dev/null | head -n 1)
           if [ -z "$FILE" ]; then
-            echo "settings.gradle نہیں ملی۔ فائل ریپو میں اپ لوڈ کریں۔"
+            echo "settings.gradle not found - upload the project zip or its files to the repo root"
             exit 1
           fi
           cd "$(dirname "$FILE")"
-          gradle assembleDebug
-
+          gradle assembleDebug --stacktrace
+          mkdir -p "$GITHUB_WORKSPACE/out" && cp -r app/build/outputs/apk/debug/*.apk "$GITHUB_WORKSPACE/out/"
       - uses: actions/upload-artifact@v4
         with:
-          name: PDFReader-APK
-          path: "**/build/outputs/apk/debug/*.apk"
+          name: MSF-PDF-Reader-debug
+          path: out/*.apk
