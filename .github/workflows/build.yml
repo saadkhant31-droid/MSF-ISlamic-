@@ -5,12 +5,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Locate Gradle project
+        id: find
+        run: |
+          f=$(find . -name settings.gradle.kts -not -path "*/node_modules/*" | head -n 1)
+          if [ -z "$f" ]; then
+            echo "No settings.gradle.kts found. Repo contents:"
+            ls -la
+            exit 1
+          fi
+          echo "dir=$(dirname "$f")" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
+
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: 8.7 }
-      - run: gradle assembleDebug
+
+      - name: Build debug APK
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: gradle assembleDebug
+
       - uses: actions/upload-artifact@v4
         with:
           name: MSF-Gold-Record-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: "**/app/build/outputs/apk/debug/*.apk"
