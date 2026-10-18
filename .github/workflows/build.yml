@@ -6,16 +6,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Locate Gradle project
-        id: find
+      - name: Unzip project
         run: |
-          f=$(find . -name settings.gradle.kts -not -path "*/node_modules/*" | head -n 1)
-          if [ -z "$f" ]; then
-            echo "No settings.gradle.kts found. Repo contents:"
-            ls -la
-            exit 1
-          fi
-          echo "dir=$(dirname "$f")" >> "$GITHUB_OUTPUT"
+          unzip -q MSF_Gold_Record_App-backup.zip -d project
+          ls project
 
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
@@ -24,10 +18,10 @@ jobs:
         with: { gradle-version: 8.7 }
 
       - name: Build debug APK
-        working-directory: ${{ steps.find.outputs.dir }}
+        working-directory: project
         run: gradle assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: MSF-Gold-Record-APK
-          path: "**/app/build/outputs/apk/debug/*.apk"
+          path: project/app/build/outputs/apk/debug/*.apk
