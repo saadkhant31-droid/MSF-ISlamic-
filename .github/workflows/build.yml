@@ -1,27 +1,58 @@
 name: Build APK
-on: [push, workflow_dispatch]
+
+on:
+  push:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Unzip project
+      - name: Check and unzip project
         run: |
-          unzip -q MSF_Gold_Record_App-backup.zip -d project
-          ls project
+          ZIP_FILE="MSF_Gold_Record_App-fixed.zip"
 
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: 17 }
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: ZIP file not found!"
+            echo "Files available in repository:"
+            ls -la
+            exit 1
+          fi
 
-      - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: 8.7 }
+          mkdir -p project
+          unzip -q "$ZIP_FILE" -d project
+
+          echo "Project files:"
+          ls -la project
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Locate Android project
+        run: |
+          find project -name settings.gradle -o -name settings.gradle.kts
+          find project -name gradlew
 
       - name: Build debug APK
         working-directory: project
-        run: gradle assembleDebug
+        run: |
+          gradle assembleDebug
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: MSF-Gold-Record-APK
-          path: project/app/build/outputs/apk/debug/*.apk
+          path: project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
