@@ -12,21 +12,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check and unzip project
+      - name: Find and unzip project
         run: |
-          ZIP_FILE="MSF_Gold_Record_App-fixed.zip"
+          ZIP_FILE=$(ls msf-document-writer*.zip 2>/dev/null | head -n 1)
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP file not found!"
-            echo "Files available in repository:"
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: No msf-document-writer*.zip found!"
             ls -la
             exit 1
           fi
 
+          echo "Using $ZIP_FILE"
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
-
-          echo "Project files:"
           ls -la project
 
       - name: Set up Java
@@ -41,18 +39,24 @@ jobs:
           gradle-version: '8.7'
 
       - name: Locate Android project
+        id: locate
         run: |
-          find project -name settings.gradle -o -name settings.gradle.kts
-          find project -name gradlew
+          SETTINGS=$(find project \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+          if [ -z "$SETTINGS" ]; then
+            echo "ERROR: No settings.gradle found in zip!"
+            exit 1
+          fi
+          DIR=$(dirname "$SETTINGS")
+          echo "Android project at: $DIR"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
       - name: Build debug APK
-        working-directory: project
-        run: |
-          gradle assembleDebug
+        working-directory: ${{ steps.locate.outputs.dir }}
+        run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: MSF-Gold-Record-APK
+          name: MSF-Document-Writer-APK
           path: project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
